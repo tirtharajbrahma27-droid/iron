@@ -2,310 +2,289 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>STARK LABS | ADVANCED HOLOGRAMS</title>
+    <title>STARK LABS | GLOBAL INTERFACE</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', monospace; }
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', sans-serif; }
         
-        /* HUD STYLING */
+        /* UI LAYER */
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
-        .hud-panel { position: absolute; padding: 20px; border: 1px solid rgba(0, 255, 255, 0.3); background: rgba(0, 20, 40, 0.6); backdrop-filter: blur(5px); }
-        .hud-text { color: #00ffff; text-shadow: 0 0 8px #00ffff; letter-spacing: 2px; text-transform: uppercase; font-weight: bold; }
-        
+        .hud-panel { position: absolute; padding: 15px 25px; border: 1px solid rgba(0, 255, 255, 0.4); background: rgba(0, 15, 30, 0.6); backdrop-filter: blur(8px); border-radius: 4px; }
+        .hud-text { color: #00ffff; text-shadow: 0 0 10px #00ffff; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; margin: 0; }
+        .sub-text { color: #88ccff; font-size: 12px; letter-spacing: 1px; margin-top: 5px; }
+
         #top-left { top: 30px; left: 30px; border-left: 4px solid #00ffff; }
         #bottom-right { bottom: 30px; right: 30px; text-align: right; border-right: 4px solid #ffaa00; }
         
-        /* MENU BUTTONS */
-        #menu-bar { 
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
-            display: flex; gap: 10px; pointer-events: auto; z-index: 20;
+        /* MENU */
+        #menu-container {
+            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 15px; pointer-events: auto; z-index: 20;
         }
         .holo-btn {
-            background: rgba(0,0,0,0.8); border: 1px solid #00ffff; color: #00ffff;
-            padding: 10px 20px; cursor: pointer; font-family: inherit; font-weight: bold;
-            transition: 0.2s; text-transform: uppercase; letter-spacing: 1px;
+            background: rgba(0,0,0,0.7); border: 1px solid #00aaaa; color: #00aaaa;
+            padding: 12px 25px; cursor: pointer; font-weight: bold; font-family: inherit;
+            transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 2px;
+            backdrop-filter: blur(4px);
         }
-        .holo-btn:hover { background: #00ffff; color: #000; box-shadow: 0 0 15px #00ffff; }
-        .active-btn { background: #00ffff; color: #000; box-shadow: 0 0 15px #00ffff; }
+        .holo-btn:hover { background: #00ffff; color: #000; box-shadow: 0 0 20px #00ffff; border-color: #00ffff; }
+        .active-btn { background: #00ffff; color: #000; box-shadow: 0 0 25px #00ffff; border-color: #fff; }
 
-        /* START OVERLAY */
-        #overlay { 
+        /* START SCREEN */
+        #overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
         }
-        #start-btn { 
-            padding: 20px 50px; border: 2px solid #00ffff; background: transparent; color: #00ffff; 
-            font-size: 20px; cursor: pointer; box-shadow: 0 0 20px #00ffff; 
+        #start-btn {
+            padding: 20px 60px; border: 2px solid #00ffff; background: rgba(0, 255, 255, 0.1); 
+            color: #00ffff; font-size: 24px; cursor: pointer; letter-spacing: 4px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3); transition: 0.3s;
         }
+        #start-btn:hover { background: #00ffff; color: #000; box-shadow: 0 0 50px #00ffff; }
+        #status-msg { margin-top: 20px; color: #666; font-family: monospace; }
+        
         #input-video { display: none; }
     </style>
-    
-    <!-- LIBRARIES -->
+
+    <!-- THREE.JS & CONTROLS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <!-- POST PROCESSING -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <!-- AI -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 </head>
 <body>
 
-    <!-- START SCREEN -->
     <div id="overlay">
-        <h1 class="hud-text" style="font-size: 40px; margin-bottom: 20px;">STARK OS V2.0</h1>
-        <button id="start-btn">INITIALIZE INTERFACE</button>
-        <p style="color:#666; margin-top:20px;">ENSURE INTERNET CONNECTION FOR SATELLITE MAPS</p>
+        <h1 class="hud-text" style="font-size: 50px; margin-bottom: 30px;">STARK INDUSTRIES</h1>
+        <button id="start-btn">INITIALIZE</button>
+        <div id="status-msg">WAITING FOR USER INPUT...</div>
     </div>
 
-    <!-- HUD -->
     <div id="ui-layer">
         <div id="top-left" class="hud-panel">
-            <div class="hud-text">ACTIVE SCHEMATIC</div>
-            <div id="model-name" style="color: #fff; font-size: 24px; margin-top: 5px;">EARTH (SATELLITE)</div>
+            <h2 class="hud-text">PROJECT HOLOGRAPH</h2>
+            <div class="sub-text">ACTIVE BLUEPRINT: <span id="model-name" style="color:#fff; font-weight:bold;">EARTH</span></div>
         </div>
         <div id="bottom-right" class="hud-panel">
-            <div class="hud-text">HAND TRACKING</div>
-            <div id="status" style="color: #ff3333;">SCANNING...</div>
+            <h2 class="hud-text">INPUT SYSTEM</h2>
+            <div id="input-status" class="sub-text" style="color: #ffaa00;">STANDBY</div>
         </div>
     </div>
 
-    <!-- MENU -->
-    <div id="menu-bar">
-        <button class="holo-btn active-btn" onclick="switchMode('earth')">1. EARTH</button>
-        <button class="holo-btn" onclick="switchMode('suit')">2. MK-85 HELMET</button>
-        <button class="holo-btn" onclick="switchMode('car')">3. CYBER-TRUCK</button>
-        <button class="holo-btn" onclick="switchMode('jet')">4. JUMP-JET</button>
+    <div id="menu-container">
+        <button class="holo-btn active-btn" onclick="loadModel('earth')">1. EARTH</button>
+        <button class="holo-btn" onclick="loadModel('suit')">2. MK-85 SUIT</button>
+        <button class="holo-btn" onclick="loadModel('cybertruck')">3. CAR</button>
+        <button class="holo-btn" onclick="loadModel('jet')">4. JET</button>
     </div>
 
     <div id="canvas-container"></div>
     <video id="input-video" playsinline></video>
 
 <script>
-    // --- 1. SETUP ---
-    const container = document.getElementById('canvas-container');
+    // --- SETUP ENGINE ---
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000510);
-    scene.fog = new THREE.FogExp2(0x000510, 0.02);
+    scene.fog = new THREE.FogExp2(0x000510, 0.015);
 
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 6;
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 0, 7);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    container.appendChild(renderer.domElement);
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-    // --- 2. POST PROCESSING (GLOW) ---
+    // MOUSE CONTROLS (Fallback)
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 2.0;
+
+    // BLOOM EFFECT
     const composer = new THREE.EffectComposer(renderer);
     composer.addPass(new THREE.RenderPass(scene, camera));
-    const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-    bloom.threshold = 0.1; bloom.strength = 1.5; bloom.radius = 0.5;
-    composer.addPass(bloom);
+    const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+    bloomPass.threshold = 0.1; bloomPass.strength = 1.2; bloomPass.radius = 0.5;
+    composer.addPass(bloomPass);
 
-    // --- 3. ASSET GENERATOR (THE MODELS) ---
-    const models = {};
-    let currentModel = null;
-    
-    // COMMON MATERIAL (Holographic Blue)
-    const wireMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true, transparent: true, opacity: 0.5 });
-    const solidMat = new THREE.MeshPhongMaterial({ color: 0x001133, emissive: 0x0044ff, emissiveIntensity: 0.2, shininess: 100, flatShading: true });
-    const lights = new THREE.DirectionalLight(0xffffff, 1); lights.position.set(5, 5, 5); scene.add(lights); scene.add(new THREE.AmbientLight(0x404040));
+    // LIGHTS
+    const ambientLight = new THREE.AmbientLight(0x404040, 2);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+    dirLight.position.set(5, 5, 5);
+    scene.add(dirLight);
+    const blueLight = new THREE.PointLight(0x00ffff, 3, 50);
+    blueLight.position.set(-5, 0, 5);
+    scene.add(blueLight);
 
-    // A. EARTH (Texture Loaded)
-    function createEarth() {
+    // --- ASSET FACTORY ---
+    let currentMesh = null;
+    const wireMat = new THREE.MeshBasicMaterial({ color: 0x00aaff, wireframe: true, transparent: true, opacity: 0.3 });
+    const solidMat = new THREE.MeshStandardMaterial({ color: 0x001122, metalness: 0.9, roughness: 0.2, emissive: 0x002244 });
+
+    function loadModel(type) {
+        if(currentMesh) scene.remove(currentMesh);
         const group = new THREE.Group();
-        const textureLoader = new THREE.TextureLoader();
-        
-        // High-Res Texture (NASA Blue Marble)
-        const earthGeo = new THREE.SphereGeometry(2.5, 64, 64);
-        const earthMat = new THREE.MeshPhongMaterial({
-            map: textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg'),
-            specularMap: textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_specular_2048.jpg'),
-            shininess: 15,
-            emissive: 0x112244,
-            emissiveIntensity: 0.1
-        });
-        const earth = new THREE.Mesh(earthGeo, earthMat);
-        group.add(earth);
 
-        // Atmosphere Glow
-        const atmosGeo = new THREE.SphereGeometry(2.7, 64, 64);
-        const atmosMat = new THREE.MeshBasicMaterial({ color: 0x00aaff, transparent: true, opacity: 0.1, side: THREE.BackSide, blending: THREE.AdditiveBlending });
-        group.add(new THREE.Mesh(atmosGeo, atmosMat));
-        
-        return group;
-    }
+        if (type === 'earth') {
+            // Real Earth Textures
+            const texLoad = new THREE.TextureLoader();
+            const earthGeo = new THREE.SphereGeometry(2.5, 64, 64);
+            const earthMat = new THREE.MeshPhongMaterial({
+                map: texLoad.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg'),
+                specularMap: texLoad.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_specular_2048.jpg'),
+                shininess: 10
+            });
+            group.add(new THREE.Mesh(earthGeo, earthMat));
+            
+            // Clouds
+            const cloudGeo = new THREE.SphereGeometry(2.55, 64, 64);
+            const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending });
+            group.add(new THREE.Mesh(cloudGeo, cloudMat));
 
-    // B. MK-85 HELMET (Procedural Geometry)
-    function createHelmet() {
-        const group = new THREE.Group();
-        // Main Head
-        const head = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5, 2), wireMat);
-        group.add(head);
-        // Faceplate
-        const face = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 1), solidMat);
-        face.position.z = 1;
-        group.add(face);
-        // Eyes
-        const eyeGeo = new THREE.BoxGeometry(0.4, 0.1, 0.1);
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const leftEye = new THREE.Mesh(eyeGeo, eyeMat); leftEye.position.set(-0.3, 0.1, 1.5);
-        const rightEye = new THREE.Mesh(eyeGeo, eyeMat); rightEye.position.set(0.3, 0.1, 1.5);
-        group.add(leftEye); group.add(rightEye);
-        return group;
-    }
+        } else if (type === 'suit') {
+            // Iron Man Helmet Construction
+            const head = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5, 2), solidMat);
+            group.add(head);
+            const mask = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2, 1), new THREE.MeshStandardMaterial({ color: 0xffaa00, metalness: 1, roughness: 0.3 }));
+            mask.position.z = 1;
+            group.add(mask);
+            const eyes = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 0.2), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+            eyes.position.set(0, 0.2, 1.5);
+            group.add(eyes);
+            // Holographic Aura
+            const aura = new THREE.Mesh(new THREE.IcosahedronGeometry(2, 1), wireMat);
+            group.add(aura);
 
-    // C. CYBER TRUCK (Primitive Shapes)
-    function createCar() {
-        const group = new THREE.Group();
-        // Body
-        const body = new THREE.Mesh(new THREE.BoxGeometry(4, 1, 2), wireMat);
-        group.add(body);
-        // Cabin
-        const cabin = new THREE.Mesh(new THREE.ConeGeometry(1.5, 2, 4), wireMat);
-        cabin.rotation.y = Math.PI / 4; cabin.position.y = 1;
-        group.add(cabin);
-        // Wheels
-        const wGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.5, 16);
-        const w1 = new THREE.Mesh(wGeo, solidMat); w1.rotation.x = Math.PI/2; w1.position.set(-1.5, -0.5, 1);
-        const w2 = new THREE.Mesh(wGeo, solidMat); w2.rotation.x = Math.PI/2; w2.position.set(1.5, -0.5, 1);
-        const w3 = new THREE.Mesh(wGeo, solidMat); w3.rotation.x = Math.PI/2; w3.position.set(-1.5, -0.5, -1);
-        const w4 = new THREE.Mesh(wGeo, solidMat); w4.rotation.x = Math.PI/2; w4.position.set(1.5, -0.5, -1);
-        group.add(w1, w2, w3, w4);
-        return group;
-    }
+        } else if (type === 'cybertruck') {
+            // Cyber Truck Shape
+            const chassis = new THREE.Mesh(new THREE.BoxGeometry(4, 1, 1.8), solidMat);
+            group.add(chassis);
+            const roof = new THREE.Mesh(new THREE.ConeGeometry(2, 1.5, 4), solidMat);
+            roof.rotation.y = Math.PI / 4;
+            roof.position.y = 1;
+            group.add(roof);
+            // Wheels
+            const wG = new THREE.CylinderGeometry(0.6, 0.6, 0.4, 32);
+            const wM = new THREE.MeshStandardMaterial({ color: 0x111111 });
+            const pos = [[-1.5,1], [1.5,1], [-1.5,-1], [1.5,-1]];
+            pos.forEach(p => {
+                const w = new THREE.Mesh(wG, wM);
+                w.rotation.x = Math.PI/2;
+                w.position.set(p[0], -0.5, p[1]);
+                group.add(w);
+            });
 
-    // D. JET (Primitive Shapes)
-    function createJet() {
-        const group = new THREE.Group();
-        // Fuselage
-        const body = new THREE.Mesh(new THREE.ConeGeometry(0.8, 4, 16), wireMat);
-        body.rotation.x = Math.PI / 2;
-        group.add(body);
-        // Wings
-        const wing = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 1), wireMat);
-        wing.position.z = 0.5;
-        group.add(wing);
-        // Thrusters
-        const t1 = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 1, 16), solidMat); t1.rotation.x=Math.PI/2; t1.position.set(0.8, 0, 1.5);
-        const t2 = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 1, 16), solidMat); t2.rotation.x=Math.PI/2; t2.position.set(-0.8, 0, 1.5);
-        group.add(t1, t2);
-        return group;
-    }
+        } else if (type === 'jet') {
+            // Jet Shape
+            const body = new THREE.Mesh(new THREE.ConeGeometry(0.8, 5, 32), solidMat);
+            body.rotation.x = Math.PI / 2;
+            group.add(body);
+            const wings = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 1.5), solidMat);
+            group.add(wings);
+            const cockpit = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 1, 4, 8), new THREE.MeshBasicMaterial({color:0x00aaff}));
+            cockpit.position.set(0, 0.5, 1);
+            group.add(cockpit);
+        }
 
-    // Initialize Models
-    models.earth = createEarth();
-    models.suit = createHelmet();
-    models.car = createCar();
-    models.jet = createJet();
-
-    function switchMode(name) {
-        if(currentModel) scene.remove(currentModel);
-        currentModel = models[name];
-        scene.add(currentModel);
-        document.getElementById('model-name').innerText = name.toUpperCase();
+        currentMesh = group;
+        scene.add(currentMesh);
+        document.getElementById('model-name').innerText = type.toUpperCase();
         
         // Update Buttons
         document.querySelectorAll('.holo-btn').forEach(b => b.classList.remove('active-btn'));
-        event.target.classList.add('active-btn');
+        const activeBtn = Array.from(document.querySelectorAll('.holo-btn')).find(b => b.innerText.toLowerCase().includes(type));
+        if(activeBtn) activeBtn.classList.add('active-btn');
     }
-    
-    // Default
-    switchMode('earth');
 
+    // Default Load
+    loadModel('earth');
 
-    // --- 4. LOGIC & TRACKING ---
-    let state = { rotX: 0, rotY: 0, explode: 1 };
-    
-    const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
-    hands.setOptions({ maxNumHands: 2, minDetectionConfidence: 0.7, minTrackingConfidence: 0.7 });
-    
-    hands.onResults(results => {
-        const detected = results.multiHandLandmarks ? results.multiHandLandmarks.length : 0;
-        const statusDiv = document.getElementById('status');
+    // --- SYSTEM LOGIC ---
+    let useHandTracking = false;
+    let handState = { rotX: 0, rotY: 0 };
+
+    document.getElementById('start-btn').addEventListener('click', async () => {
+        const statusMsg = document.getElementById('status-msg');
+        statusMsg.innerText = "ATTEMPTING TO LINK OPTICAL SENSORS...";
         
-        if (detected > 0) {
-            statusDiv.innerText = "ONLINE - " + detected + " HAND(S)";
-            statusDiv.style.color = "#00ff00";
+        try {
+            const video = document.getElementById('input-video');
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+            video.srcObject = stream;
+            video.play();
             
-            // Rotation Logic (Index Finger)
-            const lm = results.multiHandLandmarks[0];
-            state.rotY = (lm[9].x - 0.5) * 5;
-            state.rotX = (lm[9].y - 0.5) * 5;
+            // Start MediaPipe
+            const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+            hands.setOptions({maxNumHands: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.7});
+            
+            hands.onResults(results => {
+                const detected = results.multiHandLandmarks ? results.multiHandLandmarks.length : 0;
+                if (detected > 0) {
+                    controls.autoRotate = false; // Disable mouse auto-spin
+                    const lm = results.multiHandLandmarks[0];
+                    handState.rotY = (lm[9].x - 0.5) * 5;
+                    handState.rotX = (lm[9].y - 0.5) * 5;
+                    document.getElementById('input-status').innerText = "HAND TRACKING: LOCKED";
+                    document.getElementById('input-status').style.color = "#00ff00";
+                } else {
+                    controls.autoRotate = true;
+                    document.getElementById('input-status').innerText = "HAND TRACKING: SEARCHING...";
+                    document.getElementById('input-status').style.color = "#ffaa00";
+                }
+            });
 
-            // Explosion Logic (Two Hands)
-            if (detected === 2) {
-                const h1 = results.multiHandLandmarks[0][9];
-                const h2 = results.multiHandLandmarks[1][9];
-                const dist = Math.hypot(h1.x - h2.x, h1.y - h2.y);
-                state.explode = 1 + (dist * 2); // Scale modifier
-            } else {
-                state.explode = 1;
-            }
-        } else {
-            statusDiv.innerText = "SCANNING...";
-            statusDiv.style.color = "#ff3333";
-            state.explode = 1;
+            const cameraObj = new Camera(video, {
+                onFrame: async () => { await hands.send({image: video}); },
+                width: 640, height: 480
+            });
+            cameraObj.start();
+            
+            useHandTracking = true;
+            statusMsg.innerText = "ACCESS GRANTED.";
+            setTimeout(() => document.getElementById('overlay').style.display = 'none', 500);
+
+        } catch (e) {
+            // FALLBACK TO MOUSE MODE
+            console.warn("Camera blocked. Switching to Mouse Mode.");
+            statusMsg.innerText = "CAMERA BLOCKED. SWITCHING TO MANUAL MODE.";
+            statusMsg.style.color = "#ffaa00";
+            
+            document.getElementById('input-status').innerText = "MOUSE CONTROL: ACTIVE";
+            document.getElementById('input-status').style.color = "#00ffff";
+            
+            setTimeout(() => document.getElementById('overlay').style.display = 'none', 1500);
         }
     });
 
-    // --- 5. START SYSTEM ---
-    document.getElementById('start-btn').addEventListener('click', async () => {
-        const video = document.getElementById('input-video');
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
-        video.srcObject = stream;
-        video.play();
-        
-        document.getElementById('overlay').style.display = 'none';
-        
-        const camera = new Camera(video, {
-            onFrame: async () => { await hands.send({image: video}); },
-            width: 640, height: 480
-        });
-        camera.start();
-    });
-
-    // --- 6. ANIMATION LOOP ---
+    // --- RENDER LOOP ---
     function animate() {
         requestAnimationFrame(animate);
-        
-        if(currentModel) {
-            // Smooth Rotation
-            currentModel.rotation.x += (state.rotX - currentModel.rotation.x) * 0.1;
-            currentModel.rotation.y += (state.rotY - currentModel.rotation.y) * 0.1;
-            
-            // Auto spin if idle
-            if(Math.abs(state.rotX) < 0.1) currentModel.rotation.y += 0.002;
 
-            // Explode Effect (Scaling children away from center)
-            currentModel.children.forEach(child => {
-                // If child is offset, move it further out
-                if(state.explode > 1.1) {
-                    child.position.multiplyScalar(1.02); // Expand
-                } else {
-                    // Return to original position (Approximate for simple demo)
-                   // Note: A real explode system requires storing original positions.
-                   // For this simple demo, we just scale the whole group
-                   currentModel.scale.setScalar(state.explode);
-                }
-            });
+        if (currentMesh) {
+            if (useHandTracking) {
+                // Hand Control
+                currentMesh.rotation.x += (handState.rotX - currentMesh.rotation.x) * 0.1;
+                currentMesh.rotation.y += (handState.rotY - currentMesh.rotation.y) * 0.1;
+            } else {
+                // Mouse/Auto Control
+                controls.update();
+            }
         }
 
         composer.render();
     }
-    
-    // Keyboard Shortcuts
-    window.addEventListener('keydown', (e) => {
-        if(e.key === '1') switchMode('earth');
-        if(e.key === '2') switchMode('suit');
-        if(e.key === '3') switchMode('car');
-        if(e.key === '4') switchMode('jet');
-    });
-    
-    // Handle resize
+
+    // Resize Handler
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
@@ -314,7 +293,6 @@
     });
 
     animate();
-
 </script>
 </body>
 </html>
