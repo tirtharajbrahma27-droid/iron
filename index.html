@@ -2,90 +2,85 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>STARK LABS | INSTANT INTERFACE</title>
+    <title>STARK INDUSTRIES | MK-85</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', monospace; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', monospace; }
         
-        /* HUD LAYER */
+        /* UI */
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
-        
-        .hud-panel { 
-            position: absolute; padding: 15px; 
-            background: rgba(0, 10, 20, 0.7); border: 1px solid rgba(0, 255, 255, 0.3);
-            backdrop-filter: blur(5px);
-        }
-        .hud-title { color: #00ffff; font-size: 18px; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 10px #00ffff; }
-        .hud-data { color: #fff; font-size: 12px; margin-top: 5px; }
+        .hud-panel { position: absolute; padding: 15px; background: rgba(0, 10, 20, 0.8); border: 1px solid #00ffff; backdrop-filter: blur(4px); }
+        .hud-title { color: #00ffff; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 10px #00ffff; }
         
         #top-left { top: 20px; left: 20px; border-left: 5px solid #00ffff; }
         #top-right { top: 20px; right: 20px; text-align: right; border-right: 5px solid #ffaa00; }
         
-        /* MENU BUTTONS (Clickable) */
+        /* MENU */
         #menu-dock {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             display: flex; gap: 10px; pointer-events: auto; z-index: 20;
         }
-        
         .holo-btn {
-            background: rgba(0,0,0,0.8); border: 1px solid #00aaaa; color: #00aaaa;
-            padding: 10px 20px; cursor: pointer; font-weight: bold; text-transform: uppercase;
+            background: #000; border: 1px solid #00aaaa; color: #00aaaa;
+            padding: 12px 24px; cursor: pointer; font-weight: bold; text-transform: uppercase;
             transition: 0.2s; min-width: 100px;
         }
         .holo-btn:hover { background: #00ffff; color: #000; box-shadow: 0 0 20px #00ffff; }
-        .active-btn { background: #00ffff; color: #000; box-shadow: 0 0 20px #00ffff; border-color: #fff; }
+        .active-btn { background: #00ffff; color: #000; box-shadow: 0 0 25px #00ffff; border: 1px solid #fff; }
 
-        /* LOADING INDICATOR (Small) */
-        #loader {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: #00ffff; font-size: 20px; pointer-events: none; opacity: 1; transition: opacity 0.5s;
-            text-shadow: 0 0 10px #00ffff; z-index: 100;
+        /* ERROR LOG (Visible if things break) */
+        #debug-console {
+            position: absolute; bottom: 5px; left: 5px; color: #555; font-size: 10px; font-family: monospace; z-index: 5;
         }
 
         #input-video { display: none; }
     </style>
 
-    <!-- SCRIPTS -->
+    <!-- FORCE HTTPS LIBRARIES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    
+    <!-- AI -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 </head>
 <body>
 
-    <div id="loader">LOADING STARK OS...</div>
-
     <div id="ui-layer">
         <div id="top-left" class="hud-panel">
             <div class="hud-title">MODEL VIEWER</div>
-            <div class="hud-data">ACTIVE: <span id="model-name" style="color:#fff; font-weight:bold">EARTH</span></div>
+            <div style="color:#fff; margin-top:5px;">ACTIVE: <span id="model-name" style="color:#00ffff">EARTH</span></div>
         </div>
         <div id="top-right" class="hud-panel">
-            <div class="hud-title">CONTROLLER</div>
-            <div class="hud-data" id="input-mode" style="color:#ffaa00">MOUSE / TOUCH</div>
+            <div class="hud-title">INPUT SYSTEM</div>
+            <div id="input-status" style="color:#ffaa00; margin-top:5px;">MOUSE CONTROL</div>
         </div>
     </div>
 
     <div id="menu-dock">
-        <button class="holo-btn active-btn" onclick="loadBlueprint('earth')">EARTH</button>
-        <button class="holo-btn" onclick="loadBlueprint('suit')">MK-85</button>
-        <button class="holo-btn" onclick="loadBlueprint('car')">TRUCK</button>
-        <button class="holo-btn" onclick="loadBlueprint('jet')">JET</button>
+        <button class="holo-btn active-btn" onclick="loadModel('earth')">EARTH</button>
+        <button class="holo-btn" onclick="loadModel('suit')">SUIT</button>
+        <button class="holo-btn" onclick="loadModel('car')">CAR</button>
+        <button class="holo-btn" onclick="loadModel('jet')">JET</button>
     </div>
 
+    <div id="debug-console">Console Ready.</div>
     <div id="canvas-container"></div>
     <video id="input-video" playsinline></video>
 
 <script>
-    // --- 1. CORE ENGINE (Starts Immediately) ---
+    function log(msg) { document.getElementById('debug-console').innerText = msg; }
+    
+    // --- 1. INITIALIZE ENGINE INSTANTLY ---
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000510);
-    scene.fog = new THREE.FogExp2(0x000510, 0.01);
+    scene.fog = new THREE.FogExp2(0x000510, 0.015);
 
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 0, 8);
@@ -95,111 +90,101 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-    // MOUSE CONTROLS (Always Active as Fallback)
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.autoRotate = true;
-    controls.autoRotateSpeed = 1.0;
 
-    // POST PROCESSING (The Glow)
+    // --- 2. POST PROCESSING (GLOW) ---
     const composer = new THREE.EffectComposer(renderer);
     composer.addPass(new THREE.RenderPass(scene, camera));
     const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-    bloom.threshold = 0; bloom.strength = 1.2; bloom.radius = 0.5;
+    bloom.threshold = 0; bloom.strength = 1.5; bloom.radius = 0.5;
     composer.addPass(bloom);
 
-    // LIGHTING
-    scene.add(new THREE.AmbientLight(0x404040, 2));
-    const sun = new THREE.DirectionalLight(0xffffff, 2);
-    sun.position.set(5, 5, 5);
-    scene.add(sun);
+    // Lights
+    const amb = new THREE.AmbientLight(0x404040, 2); scene.add(amb);
+    const dir = new THREE.DirectionalLight(0xffffff, 2); dir.position.set(5, 5, 5); scene.add(dir);
 
-    // --- 2. ASSET GENERATOR (Procedural Models) ---
+    // --- 3. ROBUST ASSET LOADER ---
     let currentMesh = null;
     const texLoader = new THREE.TextureLoader();
-    
-    // Materials
-    const matWire = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true, transparent:true, opacity:0.3 });
-    const matSolid = new THREE.MeshStandardMaterial({ color: 0x001122, roughness: 0.3, metalness: 0.8 });
-    const matGlow = new THREE.MeshBasicMaterial({ color: 0x00aaff, transparent:true, opacity:0.8 });
+    texLoader.setCrossOrigin('anonymous'); // FIX CORS ISSUES
 
-    function loadBlueprint(type) {
+    // Materials
+    const matHolo = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true, transparent: true, opacity: 0.3 });
+    const matSolid = new THREE.MeshStandardMaterial({ color: 0x001133, metalness: 0.8, roughness: 0.2 });
+
+    function loadModel(type) {
         if(currentMesh) scene.remove(currentMesh);
         const group = new THREE.Group();
 
         if(type === 'earth') {
-            // Earth
-            const geo = new THREE.SphereGeometry(3, 64, 64);
-            const mat = new THREE.MeshPhongMaterial({
-                map: texLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg'),
-                specularMap: texLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_specular_2048.jpg'),
-                shininess: 10
-            });
-            group.add(new THREE.Mesh(geo, mat));
-            // Atmosphere
-            const atmo = new THREE.Mesh(new THREE.SphereGeometry(3.1, 64, 64), 
-                new THREE.MeshBasicMaterial({ color: 0x00aaff, transparent:true, opacity:0.1, side:THREE.BackSide }));
-            group.add(atmo);
+            // STEP 1: Create Fallback Sphere IMMEDIATELY (Blue Wireframe)
+            // This ensures screen is never black even if internet fails
+            const fallbackGeo = new THREE.SphereGeometry(3, 32, 32);
+            const fallbackMesh = new THREE.Mesh(fallbackGeo, matHolo);
+            group.add(fallbackMesh);
+
+            // STEP 2: Try to load texture on top
+            log("Loading Satellite Data...");
+            texLoader.load(
+                'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg',
+                function (texture) {
+                    // Success: Replace wireframe with Real Earth
+                    group.remove(fallbackMesh);
+                    const earthGeo = new THREE.SphereGeometry(3, 64, 64);
+                    const earthMat = new THREE.MeshPhongMaterial({ map: texture, shininess: 15 });
+                    const earth = new THREE.Mesh(earthGeo, earthMat);
+                    group.add(earth);
+                    // Add Clouds
+                    const cloudGeo = new THREE.SphereGeometry(3.05, 64, 64);
+                    const cloudMat = new THREE.MeshBasicMaterial({ color: 0x00aaff, transparent: true, opacity: 0.15, side: THREE.BackSide });
+                    group.add(new THREE.Mesh(cloudGeo, cloudMat));
+                    log("Satellite Data Active.");
+                },
+                undefined,
+                function (err) { log("Texture Failed (Security Block). Using Hologram Mode."); }
+            );
         }
         else if(type === 'suit') {
-            // Helmet
             const head = new THREE.Mesh(new THREE.IcosahedronGeometry(1.8, 2), matSolid);
-            group.add(head);
-            const face = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.2, 1), new THREE.MeshStandardMaterial({color:0xffaa00, metalness:0.9, roughness:0.2}));
+            const face = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, 1), new THREE.MeshStandardMaterial({color: 0xffaa00, metalness: 1}));
             face.position.z = 1;
-            group.add(face);
-            const eye = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.15, 0.1), new THREE.MeshBasicMaterial({color:0xffffff}));
-            eye.position.set(0, 0.2, 1.55);
-            group.add(eye);
-            // Hologram Aura
-            group.add(new THREE.Mesh(new THREE.IcosahedronGeometry(2.2, 1), matWire));
+            group.add(head); group.add(face);
+            group.add(new THREE.Mesh(new THREE.IcosahedronGeometry(2.2, 1), matHolo));
         }
         else if(type === 'car') {
-            // Cyber Truck
             const body = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 2), matSolid);
-            group.add(body);
             const top = new THREE.Mesh(new THREE.ConeGeometry(2, 1.5, 4), matSolid);
             top.rotation.y = Math.PI/4; top.position.y = 1.1;
-            group.add(top);
-            // Wheels
-            const wGeo = new THREE.CylinderGeometry(0.7, 0.7, 0.5, 32);
-            const positions = [[-1.5, 1], [1.5, 1], [-1.5, -1], [1.5, -1]];
-            positions.forEach(p => {
-                const w = new THREE.Mesh(wGeo, new THREE.MeshStandardMaterial({color:0x111111}));
-                w.rotation.x = Math.PI/2; w.position.set(p[0], -0.6, p[1]);
-                group.add(w);
-            });
+            const w1 = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.5, 32), new THREE.MeshStandardMaterial({color:0x111111}));
+            w1.rotation.x = Math.PI/2; w1.position.set(-1.5, -0.6, 1);
+            group.add(body); group.add(top); group.add(w1);
+            const w2 = w1.clone(); w2.position.set(1.5, -0.6, 1); group.add(w2);
         }
         else if(type === 'jet') {
-            // Fighter Jet
             const fus = new THREE.Mesh(new THREE.ConeGeometry(1, 6, 32), matSolid);
             fus.rotation.x = Math.PI/2;
-            group.add(fus);
             const wing = new THREE.Mesh(new THREE.BoxGeometry(5, 0.1, 2), matSolid);
-            group.add(wing);
-            const tail = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 1), matSolid);
-            tail.position.set(0, 0.5, 2.5);
-            group.add(tail);
+            group.add(fus); group.add(wing);
         }
 
         currentMesh = group;
         scene.add(currentMesh);
-        document.getElementById('model-name').innerText = type.toUpperCase();
         
-        // UI Update
+        // Update UI
+        document.getElementById('model-name').innerText = type.toUpperCase();
         document.querySelectorAll('.holo-btn').forEach(b => b.classList.remove('active-btn'));
         const active = Array.from(document.querySelectorAll('.holo-btn')).find(b => b.innerText.includes(type.toUpperCase()));
         if(active) active.classList.add('active-btn');
     }
 
-    // --- 3. AUTO-START (No Buttons) ---
-    loadBlueprint('earth'); // Load Earth immediately
-    document.getElementById('loader').style.opacity = 0; // Hide loader
+    // --- 4. START IMMEDIATELY ---
+    loadModel('earth');
 
-    // --- 4. CAMERA CONNECTION (Background Attempt) ---
-    async function initCamera() {
+    // --- 5. CAMERA LOGIC (Silent Background Load) ---
+    async function startCamera() {
         if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-
         try {
             const video = document.getElementById('input-video');
             const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
@@ -211,20 +196,16 @@
             
             hands.onResults(results => {
                 if(results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                    controls.enabled = false; // Disable Mouse
+                    controls.enabled = false; 
                     const lm = results.multiHandLandmarks[0];
-                    const rotX = (lm[9].y - 0.5) * 5;
-                    const rotY = (lm[9].x - 0.5) * 5;
-                    
                     if(currentMesh) {
-                        currentMesh.rotation.x += (rotX - currentMesh.rotation.x) * 0.1;
-                        currentMesh.rotation.y += (rotY - currentMesh.rotation.y) * 0.1;
+                        currentMesh.rotation.y = (lm[9].x - 0.5) * 5;
+                        currentMesh.rotation.x = (lm[9].y - 0.5) * 5;
                     }
-                    
-                    document.getElementById('input-mode').innerText = "HAND TRACKING ACTIVE";
-                    document.getElementById('input-mode').style.color = "#00ff00";
+                    document.getElementById('input-status').innerText = "HAND TRACKING ACTIVE";
+                    document.getElementById('input-status').style.color = "#00ff00";
                 } else {
-                    controls.enabled = true; // Re-enable Mouse if hand lost
+                    controls.enabled = true;
                 }
             });
 
@@ -233,19 +214,17 @@
                 width: 640, height: 480
             });
             cam.start();
-
-        } catch (e) {
-            console.log("Camera blocked - Staying in Mouse Mode");
-        }
+            log("Camera Linked.");
+        } catch(e) { log("Camera Blocked. Mouse Mode Only."); }
     }
+    
+    // Attempt camera connection after 1 second
+    setTimeout(startCamera, 1000);
 
-    // Try to start camera after 1 second (gives scene time to render)
-    setTimeout(initCamera, 1000);
-
-    // --- 5. RENDER LOOP ---
+    // --- 6. RENDER ---
     function animate() {
         requestAnimationFrame(animate);
-        controls.update(); // Handles mouse or auto-rotation
+        controls.update();
         composer.render();
     }
     
@@ -257,7 +236,6 @@
     });
 
     animate();
-
 </script>
 </body>
-</html>
+</html>s
