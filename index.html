@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STARK LABS | HOLOGRAPHIC INTERFACE</title>
+    <style>
+        /* --- JARVIS UI STYLING --- */
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', 'Courier New', monospace; user-select: none; }
+        
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; padding: 40px; box-sizing: border-box; }
+        
+        .hud-text { color: #00ffff; text-shadow: 0 0 10px #00ffff; letter-spacing: 2px; text-transform: uppercase; }
+        .hud-panel { position: absolute; border: 1px solid rgba(0, 255, 255, 0.3); background: rgba(0, 20, 40, 0.2); padding: 15px; backdrop-filter: blur(4px); }
+        
+        #top-left { top: 40px; left: 40px; width: 250px; border-left: 4px solid #00ffff; }
+        #bottom-right { bottom: 40px; right: 40px; text-align: right; border-right: 4px solid #ffaa00; }
+        #center-hud { top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; opacity: 0; transition: opacity 0.3s; }
+        
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; }
+        .bar-container { width: 100px; height: 4px; background: #003333; margin-top: 6px; }
+        .bar-fill { height: 100%; background: #00ffff; width: 0%; transition: width 0.1s; }
+        
+        /* START BUTTON & DEBUG OVERLAY */
+        #overlay-screen { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.9); z-index: 50; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            pointer-events: auto;
+        }
+        
+        #start-btn {
+            background: transparent; border: 2px solid #00ffff; color: #00ffff;
+            padding: 15px 40px; font-size: 20px; font-family: inherit; letter-spacing: 3px;
+            cursor: pointer; box-shadow: 0 0 20px #00ffff;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        #start-btn:hover { background: #00ffff; color: #000; }
+        
+        #error-log { margin-top: 20px; color: #ff3333; font-family: monospace; max-width: 600px; text-align: center; line-height: 1.5; }
+
+        #input-video { display: none; }
+    </style>
+    
+    <!-- LIBRARIES -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    
+    <!-- POST PROCESSING -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+</head>
+<body>
+
+    <!-- OVERLAY FOR PERMISSIONS -->
+    <div id="overlay-screen">
+        <button id="start-btn">INITIALIZE SYSTEM</button>
+        <div id="error-log">STANDBY... AWAITING USER AUTHENTICATION</div>
+    </div>
+
+    <!-- UI LAYER -->
+    <div id="ui-layer">
+        <div id="top-left" class="hud-panel">
+            <h3 class="hud-text" style="margin: 0 0 10px 0;">Mk. 85 Interface</h3>
+            <div class="stat-row"><span>SYS.INTEGRITY</span><span>100%</span></div>
+            <div class="stat-row"><span>TRACKING</span><span id="tracking-status" style="color:#ff3333">OFFLINE</span></div>
+            <div class="stat-row"><span>GESTURE</span><span id="gesture-type">--</span></div>
+            <div class="bar-container"><div class="bar-fill" id="tracking-bar"></div></div>
+        </div>
+
+        <div id="center-hud">
+            <div class="hud-text" style="font-size: 20px; border: 1px solid #00ffff; padding: 10px; border-radius: 50%;">
+                ⚠ ROTATION LOCK
+            </div>
+        </div>
+
+        <div id="bottom-right" class="hud-panel">
+            <h4 class="hud-text" style="color: #ffaa00;">MANIPULATION MODE</h4>
+            <p style="font-size: 12px; color: #aaa;">
+                ONE HAND: PINCH TO ROTATE<br>
+                TWO HANDS: SPREAD TO EXPLODE
+            </p>
+        </div>
+    </div>
+
+    <!-- 3D CANVAS -->
+    <div id="canvas-container"></div>
+    <video id="input-video" playsinline></video>
+
+<script>
+    // --- ERROR LOGGING UTILITY ---
+    const errorLog = document.getElementById('error-log');
+    function log(msg, color = "#00ffff") {
+        errorLog.innerHTML = msg;
+        errorLog.style.color = color;
+        console.log(msg);
+    }
+
+    /* 
+    ================================================================
+       STARK INDUSTRIES - JAVASCRIPT CORE
+    ================================================================ 
+    */
+
+    // --- 1. CONFIGURATION ---
+    const CONFIG = {
+        colors: { primary: 0x00ffff, secondary: 0x0088ff, alert: 0xffaa00, bg: 0x000510 },
+        bloom: { strength: 2.0, radius: 0.5, threshold: 0.1 },
+        smoothness: 0.08
+    };
+
+    // --- 2. HOLOGRAPHIC SHADERS ---
+    const hologramVertexShader = `
+        varying vec3 vNormal; varying vec3 vPosition;
+        void main() {
+            vNormal = normalize(normalMatrix * normal);
+            vPosition = position;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `;
+    const hologramFragmentShader = `
+        uniform vec3 glowColor; uniform float time;
+        varying vec3 vNormal; varying vec3 vPosition;
+        void main() {
+            vec3 viewDirection = vec3(0.0, 0.0, 1.0);
+            float fresnel = pow(1.0 - dot(vNormal, viewDirection), 3.0);
+            float scanline = sin(vPosition.y * 10.0 - time * 2.0);
+            scanline = smoothstep(0.8, 1.0, scanline) * 0.5;
+            vec3 finalColor = glowColor * (fresnel + scanline + 0.1);
+            gl_FragColor = vec4(finalColor, fresnel + scanline + 0.05);
+        }
+    `;
+
+    // --- 3. THREE.JS SCENE SETUP ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(CONFIG.colors.bg, 0.02);
+    scene.background = new THREE.Color(CONFIG.colors.bg);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 8;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    // --- 4. HOLOGRAPHIC OBJECTS ---
+    const mainGroup = new THREE.Group();
+    scene.add(mainGroup);
+
+    const shaderUniforms = { glowColor: { value: new THREE.Color(CONFIG.colors.primary) }, time: { value: 0 } };
+    const holoMaterial = new THREE.ShaderMaterial({
+        uniforms: shaderUniforms, vertexShader: hologramVertexShader, fragmentShader: hologramFragmentShader,
+        transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
+    });
+
+    const coreGeo = new THREE.IcosahedronGeometry(2, 4);
+    const coreMesh = new THREE.Mesh(coreGeo, holoMaterial);
+    mainGroup.add(coreMesh);
+
+    const ringGroup = new THREE.Group();
+    mainGroup.add(ringGroup);
+    const ringMat = new THREE.MeshBasicMaterial({ color: CONFIG.colors.secondary, wireframe: true, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending });
+
+    const r1 = new THREE.Mesh(new THREE.TorusGeometry(3, 0.05, 16, 100), ringMat); r1.rotation.x = Math.PI / 2;
+    const r2 = new THREE.Mesh(new THREE.TorusGeometry(3.5, 0.02, 16, 100), ringMat); r2.rotation.y = Math.PI / 4;
+    const r3 = new THREE.Mesh(new THREE.TorusGeometry(2.8, 0.08, 16, 100), ringMat);
+    ringGroup.add(r1); ringGroup.add(r2); ringGroup.add(r3);
+
+    const particleCount = 1000;
+    const pGeo = new THREE.BufferGeometry();
+    const pPos = new Float32Array(particleCount * 3);
+    for(let i=0; i<particleCount*3; i++) pPos[i] = (Math.random() - 0.5) * 15;
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    const pMat = new THREE.PointsMaterial({ size: 0.05, color: CONFIG.colors.primary, transparent: true, opacity: 0.6 });
+    const particleSystem = new THREE.Points(pGeo, pMat);
+    scene.add(particleSystem);
+
+    // --- 5. POST PROCESSING ---
+    const renderScene = new THREE.RenderPass(scene, camera);
+    const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+    bloomPass.threshold = CONFIG.bloom.threshold; bloomPass.strength = CONFIG.bloom.strength; bloomPass.radius = CONFIG.bloom.radius;
+    const composer = new THREE.EffectComposer(renderer);
+    composer.addPass(renderScene); composer.addPass(bloomPass);
+
+    // --- 6. GESTURE LOGIC ---
+    let state = { targetRotX: 0, targetRotY: 0, targetScale: 1, targetExplode: 0, isPinching: false, handsDetected: 0, lastHandDist: 0 };
+    const videoElement = document.getElementById('input-video');
+
+    function onResults(results) {
+        document.getElementById('overlay-screen').style.display = 'none'; // Hide start screen on success
+        
+        const landmarks = results.multiHandLandmarks;
+        state.handsDetected = landmarks ? landmarks.length : 0;
+        
+        const trackStatus = document.getElementById('tracking-status');
+        const trackBar = document.getElementById('tracking-bar');
+        
+        if (state.handsDetected > 0) {
+            trackStatus.innerHTML = "LOCKED"; trackStatus.style.color = "#00ffff"; trackBar.style.width = "100%";
+        } else {
+            trackStatus.innerHTML = "SCANNING..."; trackStatus.style.color = "#ff3333"; trackBar.style.width = "10%";
+            state.isPinching = false;
+        }
+
+        if (state.handsDetected === 1) {
+            const lm = landmarks[0];
+            const pinchDist = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y);
+            if (pinchDist < 0.06) {
+                state.isPinching = true;
+                document.getElementById('gesture-type').innerText = "ROTATION LINKED";
+                document.getElementById('center-hud').style.opacity = "1";
+                state.targetRotY = (lm[9].x - 0.5) * 6; 
+                state.targetRotX = (lm[9].y - 0.5) * 6;
+            } else {
+                state.isPinching = false;
+                document.getElementById('gesture-type').innerText = "HOVERING";
+                document.getElementById('center-hud').style.opacity = "0";
+            }
+        } 
+        else if (state.handsDetected === 2) {
+            const hand1 = landmarks[0][9]; const hand2 = landmarks[1][9];
+            const dist = Math.hypot(hand1.x - hand2.x, hand1.y - hand2.y);
+            if (state.lastHandDist === 0) state.lastHandDist = dist;
+            if (dist > 0.4) {
+                state.targetExplode = 2.5; state.targetScale = 1.2;
+                document.getElementById('gesture-type').innerText = "EXPLODED VIEW";
+            } else {
+                state.targetExplode = 0; state.targetScale = 1.0;
+                document.getElementById('gesture-type').innerText = "SYSTEM NORMAL";
+            }
+        } else {
+            state.lastHandDist = 0;
+        }
+    }
+
+    // --- 7. INITIALIZATION (START BUTTON) ---
+    const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+    hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.7 });
+    hands.onResults(onResults);
+
+    document.getElementById('start-btn').addEventListener('click', async () => {
+        log("ATTEMPTING TO INITIALIZE CAMERA...", "#fff");
+        
+        try {
+            // FORCE REQUEST
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+            videoElement.srcObject = stream;
+            videoElement.play();
+            
+            log("CAMERA ACQUIRED. BOOTING NEURAL NETWORK...");
+            document.getElementById('start-btn').style.display = 'none';
+
+            // Start MediaPipe
+            const camera = new Camera(videoElement, {
+                onFrame: async () => { await hands.send({image: videoElement}); },
+                width: 640, height: 480
+            });
+            camera.start();
+            
+        } catch (e) {
+            console.error(e);
+            
+            // CUSTOM ERROR HANDLING FOR FILE PROTOCOL
+            if (window.location.protocol === 'file:') {
+                log("❌ ACCESS DENIED BY BROWSER SECURITY<br><br>Browsers strictly block camera access on local files.<br>To fix this, you cannot simply double-click the file.<br><br><b>SOLUTION 1:</b> Use VS Code 'Live Server' extension.<br><b>SOLUTION 2:</b> Open terminal here and type 'python -m http.server'<br><b>SOLUTION 3:</b> Upload this file to a site like CodePen or Netlify.", "#ff3333");
+            } else {
+                log("❌ CAMERA ACCESS DENIED<br>Please allow camera permissions in your browser URL bar.", "#ff3333");
+            }
+        }
+    });
+
+    // --- 8. ANIMATION LOOP ---
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = CONFIG.smoothness;
+        mainGroup.rotation.x += (state.targetRotX - mainGroup.rotation.x) * dt;
+        mainGroup.rotation.y += (state.targetRotY - mainGroup.rotation.y) * dt;
+        
+        if (!state.isPinching && state.handsDetected === 0) {
+            mainGroup.rotation.y += 0.002; ringGroup.rotation.z -= 0.005;
+        }
+
+        let newScale = THREE.MathUtils.lerp(ringGroup.scale.x, 1 + state.targetExplode, 0.05);
+        ringGroup.scale.setScalar(newScale);
+        mainGroup.scale.setScalar(THREE.MathUtils.lerp(mainGroup.scale.x, state.targetScale, 0.05));
+        
+        shaderUniforms.time.value += 0.01;
+        particleSystem.rotation.y -= 0.001;
+        composer.render();
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+</script>
+</body>
+</html>
