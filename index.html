@@ -2,289 +2,253 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>STARK LABS | GLOBAL INTERFACE</title>
+    <title>STARK LABS | INSTANT INTERFACE</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', monospace; }
         
-        /* UI LAYER */
+        /* HUD LAYER */
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
-        .hud-panel { position: absolute; padding: 15px 25px; border: 1px solid rgba(0, 255, 255, 0.4); background: rgba(0, 15, 30, 0.6); backdrop-filter: blur(8px); border-radius: 4px; }
-        .hud-text { color: #00ffff; text-shadow: 0 0 10px #00ffff; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; margin: 0; }
-        .sub-text { color: #88ccff; font-size: 12px; letter-spacing: 1px; margin-top: 5px; }
-
-        #top-left { top: 30px; left: 30px; border-left: 4px solid #00ffff; }
-        #bottom-right { bottom: 30px; right: 30px; text-align: right; border-right: 4px solid #ffaa00; }
         
-        /* MENU */
-        #menu-container {
-            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 15px; pointer-events: auto; z-index: 20;
+        .hud-panel { 
+            position: absolute; padding: 15px; 
+            background: rgba(0, 10, 20, 0.7); border: 1px solid rgba(0, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
         }
+        .hud-title { color: #00ffff; font-size: 18px; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 10px #00ffff; }
+        .hud-data { color: #fff; font-size: 12px; margin-top: 5px; }
+        
+        #top-left { top: 20px; left: 20px; border-left: 5px solid #00ffff; }
+        #top-right { top: 20px; right: 20px; text-align: right; border-right: 5px solid #ffaa00; }
+        
+        /* MENU BUTTONS (Clickable) */
+        #menu-dock {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 10px; pointer-events: auto; z-index: 20;
+        }
+        
         .holo-btn {
-            background: rgba(0,0,0,0.7); border: 1px solid #00aaaa; color: #00aaaa;
-            padding: 12px 25px; cursor: pointer; font-weight: bold; font-family: inherit;
-            transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 2px;
-            backdrop-filter: blur(4px);
+            background: rgba(0,0,0,0.8); border: 1px solid #00aaaa; color: #00aaaa;
+            padding: 10px 20px; cursor: pointer; font-weight: bold; text-transform: uppercase;
+            transition: 0.2s; min-width: 100px;
         }
-        .holo-btn:hover { background: #00ffff; color: #000; box-shadow: 0 0 20px #00ffff; border-color: #00ffff; }
-        .active-btn { background: #00ffff; color: #000; box-shadow: 0 0 25px #00ffff; border-color: #fff; }
+        .holo-btn:hover { background: #00ffff; color: #000; box-shadow: 0 0 20px #00ffff; }
+        .active-btn { background: #00ffff; color: #000; box-shadow: 0 0 20px #00ffff; border-color: #fff; }
 
-        /* START SCREEN */
-        #overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        /* LOADING INDICATOR (Small) */
+        #loader {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #00ffff; font-size: 20px; pointer-events: none; opacity: 1; transition: opacity 0.5s;
+            text-shadow: 0 0 10px #00ffff; z-index: 100;
         }
-        #start-btn {
-            padding: 20px 60px; border: 2px solid #00ffff; background: rgba(0, 255, 255, 0.1); 
-            color: #00ffff; font-size: 24px; cursor: pointer; letter-spacing: 4px;
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3); transition: 0.3s;
-        }
-        #start-btn:hover { background: #00ffff; color: #000; box-shadow: 0 0 50px #00ffff; }
-        #status-msg { margin-top: 20px; color: #666; font-family: monospace; }
-        
+
         #input-video { display: none; }
     </style>
 
-    <!-- THREE.JS & CONTROLS -->
+    <!-- SCRIPTS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <!-- POST PROCESSING -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-    <!-- AI -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 </head>
 <body>
 
-    <div id="overlay">
-        <h1 class="hud-text" style="font-size: 50px; margin-bottom: 30px;">STARK INDUSTRIES</h1>
-        <button id="start-btn">INITIALIZE</button>
-        <div id="status-msg">WAITING FOR USER INPUT...</div>
-    </div>
+    <div id="loader">LOADING STARK OS...</div>
 
     <div id="ui-layer">
         <div id="top-left" class="hud-panel">
-            <h2 class="hud-text">PROJECT HOLOGRAPH</h2>
-            <div class="sub-text">ACTIVE BLUEPRINT: <span id="model-name" style="color:#fff; font-weight:bold;">EARTH</span></div>
+            <div class="hud-title">MODEL VIEWER</div>
+            <div class="hud-data">ACTIVE: <span id="model-name" style="color:#fff; font-weight:bold">EARTH</span></div>
         </div>
-        <div id="bottom-right" class="hud-panel">
-            <h2 class="hud-text">INPUT SYSTEM</h2>
-            <div id="input-status" class="sub-text" style="color: #ffaa00;">STANDBY</div>
+        <div id="top-right" class="hud-panel">
+            <div class="hud-title">CONTROLLER</div>
+            <div class="hud-data" id="input-mode" style="color:#ffaa00">MOUSE / TOUCH</div>
         </div>
     </div>
 
-    <div id="menu-container">
-        <button class="holo-btn active-btn" onclick="loadModel('earth')">1. EARTH</button>
-        <button class="holo-btn" onclick="loadModel('suit')">2. MK-85 SUIT</button>
-        <button class="holo-btn" onclick="loadModel('cybertruck')">3. CAR</button>
-        <button class="holo-btn" onclick="loadModel('jet')">4. JET</button>
+    <div id="menu-dock">
+        <button class="holo-btn active-btn" onclick="loadBlueprint('earth')">EARTH</button>
+        <button class="holo-btn" onclick="loadBlueprint('suit')">MK-85</button>
+        <button class="holo-btn" onclick="loadBlueprint('car')">TRUCK</button>
+        <button class="holo-btn" onclick="loadBlueprint('jet')">JET</button>
     </div>
 
     <div id="canvas-container"></div>
     <video id="input-video" playsinline></video>
 
 <script>
-    // --- SETUP ENGINE ---
+    // --- 1. CORE ENGINE (Starts Immediately) ---
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000510);
-    scene.fog = new THREE.FogExp2(0x000510, 0.015);
+    scene.fog = new THREE.FogExp2(0x000510, 0.01);
 
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 0, 7);
+    camera.position.set(0, 0, 8);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-    // MOUSE CONTROLS (Fallback)
+    // MOUSE CONTROLS (Always Active as Fallback)
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
     controls.autoRotate = true;
-    controls.autoRotateSpeed = 2.0;
+    controls.autoRotateSpeed = 1.0;
 
-    // BLOOM EFFECT
+    // POST PROCESSING (The Glow)
     const composer = new THREE.EffectComposer(renderer);
     composer.addPass(new THREE.RenderPass(scene, camera));
-    const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-    bloomPass.threshold = 0.1; bloomPass.strength = 1.2; bloomPass.radius = 0.5;
-    composer.addPass(bloomPass);
+    const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+    bloom.threshold = 0; bloom.strength = 1.2; bloom.radius = 0.5;
+    composer.addPass(bloom);
 
-    // LIGHTS
-    const ambientLight = new THREE.AmbientLight(0x404040, 2);
-    scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 2);
-    dirLight.position.set(5, 5, 5);
-    scene.add(dirLight);
-    const blueLight = new THREE.PointLight(0x00ffff, 3, 50);
-    blueLight.position.set(-5, 0, 5);
-    scene.add(blueLight);
+    // LIGHTING
+    scene.add(new THREE.AmbientLight(0x404040, 2));
+    const sun = new THREE.DirectionalLight(0xffffff, 2);
+    sun.position.set(5, 5, 5);
+    scene.add(sun);
 
-    // --- ASSET FACTORY ---
+    // --- 2. ASSET GENERATOR (Procedural Models) ---
     let currentMesh = null;
-    const wireMat = new THREE.MeshBasicMaterial({ color: 0x00aaff, wireframe: true, transparent: true, opacity: 0.3 });
-    const solidMat = new THREE.MeshStandardMaterial({ color: 0x001122, metalness: 0.9, roughness: 0.2, emissive: 0x002244 });
+    const texLoader = new THREE.TextureLoader();
+    
+    // Materials
+    const matWire = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true, transparent:true, opacity:0.3 });
+    const matSolid = new THREE.MeshStandardMaterial({ color: 0x001122, roughness: 0.3, metalness: 0.8 });
+    const matGlow = new THREE.MeshBasicMaterial({ color: 0x00aaff, transparent:true, opacity:0.8 });
 
-    function loadModel(type) {
+    function loadBlueprint(type) {
         if(currentMesh) scene.remove(currentMesh);
         const group = new THREE.Group();
 
-        if (type === 'earth') {
-            // Real Earth Textures
-            const texLoad = new THREE.TextureLoader();
-            const earthGeo = new THREE.SphereGeometry(2.5, 64, 64);
-            const earthMat = new THREE.MeshPhongMaterial({
-                map: texLoad.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg'),
-                specularMap: texLoad.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_specular_2048.jpg'),
+        if(type === 'earth') {
+            // Earth
+            const geo = new THREE.SphereGeometry(3, 64, 64);
+            const mat = new THREE.MeshPhongMaterial({
+                map: texLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg'),
+                specularMap: texLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_specular_2048.jpg'),
                 shininess: 10
             });
-            group.add(new THREE.Mesh(earthGeo, earthMat));
-            
-            // Clouds
-            const cloudGeo = new THREE.SphereGeometry(2.55, 64, 64);
-            const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending });
-            group.add(new THREE.Mesh(cloudGeo, cloudMat));
-
-        } else if (type === 'suit') {
-            // Iron Man Helmet Construction
-            const head = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5, 2), solidMat);
+            group.add(new THREE.Mesh(geo, mat));
+            // Atmosphere
+            const atmo = new THREE.Mesh(new THREE.SphereGeometry(3.1, 64, 64), 
+                new THREE.MeshBasicMaterial({ color: 0x00aaff, transparent:true, opacity:0.1, side:THREE.BackSide }));
+            group.add(atmo);
+        }
+        else if(type === 'suit') {
+            // Helmet
+            const head = new THREE.Mesh(new THREE.IcosahedronGeometry(1.8, 2), matSolid);
             group.add(head);
-            const mask = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2, 1), new THREE.MeshStandardMaterial({ color: 0xffaa00, metalness: 1, roughness: 0.3 }));
-            mask.position.z = 1;
-            group.add(mask);
-            const eyes = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 0.2), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
-            eyes.position.set(0, 0.2, 1.5);
-            group.add(eyes);
-            // Holographic Aura
-            const aura = new THREE.Mesh(new THREE.IcosahedronGeometry(2, 1), wireMat);
-            group.add(aura);
-
-        } else if (type === 'cybertruck') {
-            // Cyber Truck Shape
-            const chassis = new THREE.Mesh(new THREE.BoxGeometry(4, 1, 1.8), solidMat);
-            group.add(chassis);
-            const roof = new THREE.Mesh(new THREE.ConeGeometry(2, 1.5, 4), solidMat);
-            roof.rotation.y = Math.PI / 4;
-            roof.position.y = 1;
-            group.add(roof);
+            const face = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.2, 1), new THREE.MeshStandardMaterial({color:0xffaa00, metalness:0.9, roughness:0.2}));
+            face.position.z = 1;
+            group.add(face);
+            const eye = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.15, 0.1), new THREE.MeshBasicMaterial({color:0xffffff}));
+            eye.position.set(0, 0.2, 1.55);
+            group.add(eye);
+            // Hologram Aura
+            group.add(new THREE.Mesh(new THREE.IcosahedronGeometry(2.2, 1), matWire));
+        }
+        else if(type === 'car') {
+            // Cyber Truck
+            const body = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 2), matSolid);
+            group.add(body);
+            const top = new THREE.Mesh(new THREE.ConeGeometry(2, 1.5, 4), matSolid);
+            top.rotation.y = Math.PI/4; top.position.y = 1.1;
+            group.add(top);
             // Wheels
-            const wG = new THREE.CylinderGeometry(0.6, 0.6, 0.4, 32);
-            const wM = new THREE.MeshStandardMaterial({ color: 0x111111 });
-            const pos = [[-1.5,1], [1.5,1], [-1.5,-1], [1.5,-1]];
-            pos.forEach(p => {
-                const w = new THREE.Mesh(wG, wM);
-                w.rotation.x = Math.PI/2;
-                w.position.set(p[0], -0.5, p[1]);
+            const wGeo = new THREE.CylinderGeometry(0.7, 0.7, 0.5, 32);
+            const positions = [[-1.5, 1], [1.5, 1], [-1.5, -1], [1.5, -1]];
+            positions.forEach(p => {
+                const w = new THREE.Mesh(wGeo, new THREE.MeshStandardMaterial({color:0x111111}));
+                w.rotation.x = Math.PI/2; w.position.set(p[0], -0.6, p[1]);
                 group.add(w);
             });
-
-        } else if (type === 'jet') {
-            // Jet Shape
-            const body = new THREE.Mesh(new THREE.ConeGeometry(0.8, 5, 32), solidMat);
-            body.rotation.x = Math.PI / 2;
-            group.add(body);
-            const wings = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 1.5), solidMat);
-            group.add(wings);
-            const cockpit = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 1, 4, 8), new THREE.MeshBasicMaterial({color:0x00aaff}));
-            cockpit.position.set(0, 0.5, 1);
-            group.add(cockpit);
+        }
+        else if(type === 'jet') {
+            // Fighter Jet
+            const fus = new THREE.Mesh(new THREE.ConeGeometry(1, 6, 32), matSolid);
+            fus.rotation.x = Math.PI/2;
+            group.add(fus);
+            const wing = new THREE.Mesh(new THREE.BoxGeometry(5, 0.1, 2), matSolid);
+            group.add(wing);
+            const tail = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 1), matSolid);
+            tail.position.set(0, 0.5, 2.5);
+            group.add(tail);
         }
 
         currentMesh = group;
         scene.add(currentMesh);
         document.getElementById('model-name').innerText = type.toUpperCase();
         
-        // Update Buttons
+        // UI Update
         document.querySelectorAll('.holo-btn').forEach(b => b.classList.remove('active-btn'));
-        const activeBtn = Array.from(document.querySelectorAll('.holo-btn')).find(b => b.innerText.toLowerCase().includes(type));
-        if(activeBtn) activeBtn.classList.add('active-btn');
+        const active = Array.from(document.querySelectorAll('.holo-btn')).find(b => b.innerText.includes(type.toUpperCase()));
+        if(active) active.classList.add('active-btn');
     }
 
-    // Default Load
-    loadModel('earth');
+    // --- 3. AUTO-START (No Buttons) ---
+    loadBlueprint('earth'); // Load Earth immediately
+    document.getElementById('loader').style.opacity = 0; // Hide loader
 
-    // --- SYSTEM LOGIC ---
-    let useHandTracking = false;
-    let handState = { rotX: 0, rotY: 0 };
+    // --- 4. CAMERA CONNECTION (Background Attempt) ---
+    async function initCamera() {
+        if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
 
-    document.getElementById('start-btn').addEventListener('click', async () => {
-        const statusMsg = document.getElementById('status-msg');
-        statusMsg.innerText = "ATTEMPTING TO LINK OPTICAL SENSORS...";
-        
         try {
             const video = document.getElementById('input-video');
             const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
             video.srcObject = stream;
             video.play();
-            
-            // Start MediaPipe
+
             const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
             hands.setOptions({maxNumHands: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.7});
             
             hands.onResults(results => {
-                const detected = results.multiHandLandmarks ? results.multiHandLandmarks.length : 0;
-                if (detected > 0) {
-                    controls.autoRotate = false; // Disable mouse auto-spin
+                if(results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    controls.enabled = false; // Disable Mouse
                     const lm = results.multiHandLandmarks[0];
-                    handState.rotY = (lm[9].x - 0.5) * 5;
-                    handState.rotX = (lm[9].y - 0.5) * 5;
-                    document.getElementById('input-status').innerText = "HAND TRACKING: LOCKED";
-                    document.getElementById('input-status').style.color = "#00ff00";
+                    const rotX = (lm[9].y - 0.5) * 5;
+                    const rotY = (lm[9].x - 0.5) * 5;
+                    
+                    if(currentMesh) {
+                        currentMesh.rotation.x += (rotX - currentMesh.rotation.x) * 0.1;
+                        currentMesh.rotation.y += (rotY - currentMesh.rotation.y) * 0.1;
+                    }
+                    
+                    document.getElementById('input-mode').innerText = "HAND TRACKING ACTIVE";
+                    document.getElementById('input-mode').style.color = "#00ff00";
                 } else {
-                    controls.autoRotate = true;
-                    document.getElementById('input-status').innerText = "HAND TRACKING: SEARCHING...";
-                    document.getElementById('input-status').style.color = "#ffaa00";
+                    controls.enabled = true; // Re-enable Mouse if hand lost
                 }
             });
 
-            const cameraObj = new Camera(video, {
+            const cam = new Camera(video, {
                 onFrame: async () => { await hands.send({image: video}); },
                 width: 640, height: 480
             });
-            cameraObj.start();
-            
-            useHandTracking = true;
-            statusMsg.innerText = "ACCESS GRANTED.";
-            setTimeout(() => document.getElementById('overlay').style.display = 'none', 500);
+            cam.start();
 
         } catch (e) {
-            // FALLBACK TO MOUSE MODE
-            console.warn("Camera blocked. Switching to Mouse Mode.");
-            statusMsg.innerText = "CAMERA BLOCKED. SWITCHING TO MANUAL MODE.";
-            statusMsg.style.color = "#ffaa00";
-            
-            document.getElementById('input-status').innerText = "MOUSE CONTROL: ACTIVE";
-            document.getElementById('input-status').style.color = "#00ffff";
-            
-            setTimeout(() => document.getElementById('overlay').style.display = 'none', 1500);
+            console.log("Camera blocked - Staying in Mouse Mode");
         }
-    });
-
-    // --- RENDER LOOP ---
-    function animate() {
-        requestAnimationFrame(animate);
-
-        if (currentMesh) {
-            if (useHandTracking) {
-                // Hand Control
-                currentMesh.rotation.x += (handState.rotX - currentMesh.rotation.x) * 0.1;
-                currentMesh.rotation.y += (handState.rotY - currentMesh.rotation.y) * 0.1;
-            } else {
-                // Mouse/Auto Control
-                controls.update();
-            }
-        }
-
-        composer.render();
     }
 
-    // Resize Handler
+    // Try to start camera after 1 second (gives scene time to render)
+    setTimeout(initCamera, 1000);
+
+    // --- 5. RENDER LOOP ---
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update(); // Handles mouse or auto-rotation
+        composer.render();
+    }
+    
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
@@ -293,6 +257,7 @@
     });
 
     animate();
+
 </script>
 </body>
 </html>
